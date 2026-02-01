@@ -23,7 +23,13 @@ final class Csrf
 
         // Allow login without existing CSRF token (first call).
         $route = Request::route();
-        if ($route === '/auth/login') {
+        // Public routes that don't require CSRF (they have their own security)
+        $exemptRoutes = [
+            '/auth/login',
+            '/auth/request-password-reset',
+            '/auth/reset-password',
+        ];
+        if (in_array($route, $exemptRoutes, true)) {
             return;
         }
 

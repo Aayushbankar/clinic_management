@@ -47,7 +47,12 @@ if (str_starts_with($path, '/assets/')) {
         'ico' => 'image/x-icon',
     ];
     header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
-    header('Cache-Control: public, max-age=3600');
+    // Disable caching for JS/CSS during development
+    if (in_array($ext, ['js', 'css'])) {
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+    } else {
+        header('Cache-Control: public, max-age=3600');
+    }
     readfile($file);
     exit;
 }

@@ -10,7 +10,9 @@ require __DIR__ . '/../src/core/Security.php';
 require __DIR__ . '/../src/core/Database.php';
 require __DIR__ . '/../src/middleware/Auth.php';
 require __DIR__ . '/../src/middleware/Csrf.php';
+require __DIR__ . '/../src/middleware/RateLimiter.php';
 require __DIR__ . '/../src/models/UserModel.php';
+require __DIR__ . '/../src/models/PasswordResetModel.php';
 require __DIR__ . '/../src/controllers/AuthController.php';
 require __DIR__ . '/../src/models/DepartmentModel.php';
 require __DIR__ . '/../src/models/MedicineModel.php';
@@ -38,7 +40,7 @@ require __DIR__ . '/../src/controllers/FeedbackController.php';
 
 $config = require __DIR__ . '/../src/config/config.php';
 
-Security::setDefaultHeaders();
+Security::setDefaultHeaders($config);
 Security::maybeCors($config);
 
 // Session
@@ -101,8 +103,21 @@ $router->add('POST', '/auth/logout', function (array $params = []): void {
     AuthController::logout();
 });
 
+$router->add('POST', '/auth/change-password', function (array $params = []) use ($config): void {
+    AuthController::changePassword($config);
+});
+
 $router->add('GET', '/auth/me', function (array $params = []) use ($config): void {
     AuthController::me($config);
+});
+
+// Password Reset (public endpoints - no CSRF required)
+$router->add('POST', '/auth/request-password-reset', function (array $params = []) use ($config): void {
+    AuthController::requestPasswordReset($config);
+});
+
+$router->add('POST', '/auth/reset-password', function (array $params = []) use ($config): void {
+    AuthController::resetPassword($config);
 });
 
 // Users (admin)
@@ -300,6 +315,15 @@ $router->add('GET', '/reports/revenue', function (array $params = []) use ($conf
 });
 $router->add('GET', '/reports/patient-history', function (array $params = []) use ($config): void {
     ReportController::patientHistory($config);
+});
+
+// CSV Exports
+$router->add('GET', '/reports/appointments/csv', function (array $params = []) use ($config): void {
+    ReportController::appointmentsCsv($config);
+});
+
+$router->add('GET', '/reports/billing/csv', function (array $params = []) use ($config): void {
+    ReportController::billingCsv($config);
 });
 
 // Patient history (doctor write)

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 final class Security
 {
-    public static function setDefaultHeaders(): void
+    public static function setDefaultHeaders(array $config = []): void
     {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
@@ -11,6 +11,12 @@ final class Security
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
         // A conservative baseline CSP for the API. (Frontend will have its own CSP if served separately.)
         header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+        
+        // HSTS for production (enable via config)
+        $hsts = $config['app']['hsts_enabled'] ?? false;
+        if ($hsts || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')) {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+        }
     }
 
     public static function maybeCors(array $config): void

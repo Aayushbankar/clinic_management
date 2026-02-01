@@ -1,9 +1,18 @@
 # 🏥 Clinic Management System - Client Handover Guide
 
-**Version:** 1.0.0
+**Version:** 1.1.1
 **Delivery Date:** 2026-02-01
 
 Welcome to your new Clinic Management System! This document provides everything you need to run, use, and test the system.
+
+---
+
+## 🆕 What's New in v1.1.1
+
+- **Password Reset**: Forgot your password? Click the link on the login page
+- **CSV Exports**: Download appointments and billing reports from Reports page
+- **Rate Limiting**: Account protection after 5 failed login attempts
+- **Improved Security**: HSTS, CSRF protection, secure sessions
 
 ---
 

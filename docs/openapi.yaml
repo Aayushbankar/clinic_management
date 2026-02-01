@@ -1,0 +1,416 @@
+openapi: 3.0.3
+info:
+  title: Clinic Management System API
+  description: |
+    REST API for the Clinic Management System (CMS).
+
+    ## Authentication
+    - Session-based authentication with HttpOnly cookies
+    - CSRF token required for state-changing requests (POST, PUT, PATCH, DELETE)
+    - Get CSRF token from `GET /auth/csrf` after login
+
+    ## Rate Limiting
+    - Login endpoint: 5 attempts per 5 minutes, then 15-minute lockout
+
+    ## Roles
+    - `admin`: Full system access
+    - `doctor`: Own schedule, appointments, patient history
+    - `staff`: Patients, appointments, billing, medicines
+    - `patient`: Own appointments, bills, feedback
+  version: 1.1.0
+  contact:
+    name: Support
+    email: support@clinic.test
+
+servers:
+  - url: http://localhost:8080/api.php?route=
+    description: Local Docker environment
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Users
+    description: User management (admin only)
+  - name: Departments
+    description: Department management
+  - name: Doctors
+    description: Doctor profiles and schedules
+  - name: Patients
+    description: Patient records
+  - name: Appointments
+    description: Appointment booking and management
+  - name: Billing
+    description: Bills and payments
+  - name: Reports
+    description: Dashboard and report data
+  - name: Medicines
+    description: Medicine inventory
+  - name: Settings
+    description: Clinic settings
+  - name: Feedback
+    description: Patient feedback
+
+paths:
+  /:
+    get:
+      tags: [Auth]
+      summary: API Health Check
+      responses:
+        "200":
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      service: { type: string, example: "cms-api" }
+                      status: { type: string, example: "ok" }
+
+  /auth/csrf:
+    get:
+      tags: [Auth]
+      summary: Get CSRF Token
+      responses:
+        "200":
+          description: CSRF token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      csrf_token: { type: string, example: "abc123..." }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User Login
+      description: Authenticate and start session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  { type: string, format: email, example: "admin@clinic.test" }
+                password: { type: string, example: "Admin@123" }
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+        "429":
+          description: Too many login attempts
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: User Logout
+      security: [sessionAuth: []]
+      responses:
+        "200":
+          description: Logged out successfully
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get Current User
+      security: [sessionAuth: []]
+      responses:
+        "200":
+          description: Current user data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Not authenticated
+
+  /auth/request-password-reset:
+    post:
+      tags: [Auth]
+      summary: Request Password Reset
+      description: Sends password reset token (returns token in demo mode)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Reset requested (always returns success for security)
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset Password
+      description: Set new password using reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, minLength: 64, maxLength: 64 }
+                password: { type: string, minLength: 8 }
+      responses:
+        "200":
+          description: Password updated successfully
+        "400":
+          description: Invalid or expired token
+        "422":
+          description: Password does not meet requirements
+
+  /departments:
+    get:
+      tags: [Departments]
+      summary: List Departments
+      security: [sessionAuth: []]
+      responses:
+        "200":
+          description: List of departments
+    post:
+      tags: [Departments]
+      summary: Create Department
+      security: [sessionAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "201":
+          description: Department created
+
+  /departments/{id}:
+    get:
+      tags: [Departments]
+      summary: Get Department
+      security: [sessionAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Department details
+    put:
+      tags: [Departments]
+      summary: Update Department
+      security: [sessionAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "200":
+          description: Department updated
+    delete:
+      tags: [Departments]
+      summary: Delete Department
+      security: [sessionAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Department deleted
+
+  /doctors:
+    get:
+      tags: [Doctors]
+      summary: List Doctors
+      security: [sessionAuth: []]
+      responses:
+        "200":
+          description: List of doctors
+    post:
+      tags: [Doctors]
+      summary: Create Doctor
+      security: [sessionAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoctorInput"
+      responses:
+        "201":
+          description: Doctor created
+
+  /appointments:
+    get:
+      tags: [Appointments]
+      summary: List Appointments
+      security: [sessionAuth: []]
+      responses:
+        "200":
+          description: List of appointments
+    post:
+      tags: [Appointments]
+      summary: Book Appointment
+      security: [sessionAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentInput"
+      responses:
+        "201":
+          description: Appointment booked
+        "409":
+          description: Scheduling conflict
+
+  /reports/dashboard:
+    get:
+      tags: [Reports]
+      summary: Dashboard Statistics
+      security: [sessionAuth: []]
+      responses:
+        "200":
+          description: Role-specific dashboard data
+
+  /reports/appointments/csv:
+    get:
+      tags: [Reports]
+      summary: Export Appointments CSV
+      description: Download appointments as CSV file (admin/staff only)
+      security: [sessionAuth: []]
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+          example: "2026-01-01"
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+          example: "2026-02-01"
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /reports/billing/csv:
+    get:
+      tags: [Reports]
+      summary: Export Billing CSV
+      description: Download billing records as CSV file (admin/staff only)
+      security: [sessionAuth: []]
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: CMSSESSID
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        data:
+          type: object
+          properties:
+            user:
+              $ref: "#/components/schemas/User"
+            csrf_token: { type: string }
+
+    UserResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        data:
+          type: object
+          properties:
+            user:
+              $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      properties:
+        user_id: { type: integer }
+        user_name: { type: string }
+        login_email: { type: string, format: email }
+        role: { type: string, enum: [admin, doctor, staff, patient] }
+        status: { type: string, enum: [active, inactive] }
+        created_at: { type: string, format: date-time }
+
+    DepartmentInput:
+      type: object
+      required: [department_name]
+      properties:
+        department_name: { type: string, maxLength: 120 }
+        description: { type: string }
+
+    DoctorInput:
+      type: object
+      required: [email, password, name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        name: { type: string }
+        specialization: { type: string }
+        qualification: { type: string }
+        mobile: { type: string }
+        experience: { type: integer }
+        consultation_fee: { type: number }
+        department_id: { type: integer }
+
+    AppointmentInput:
+      type: object
+      required: [patient_id, doctor_id, appointment_date, appointment_time]
+      properties:
+        patient_id: { type: integer }
+        doctor_id: { type: integer }
+        appointment_date: { type: string, format: date }
+        appointment_time: { type: string, pattern: "^\\d{2}:\\d{2}(:\\d{2})?$" }

@@ -142,6 +142,7 @@ function navItemsForRole(role) {
     { id: 'reports', label: 'Reports' },
     { id: 'settings', label: 'Settings' },
     { id: 'profile', label: 'Profile' },
+    { id: 'change_password', label: 'Change Password' },
     { id: 'logout', label: 'Logout' },
   ];
 
@@ -171,6 +172,7 @@ function navItemsForRole(role) {
       { id: 'medicines', label: 'Medicines' },
       { id: 'reports', label: 'Reports' },
       { id: 'profile', label: 'Profile' },
+      { id: 'change_password', label: 'Change Password' },
       { id: 'logout', label: 'Logout' },
     ];
   }
@@ -183,6 +185,7 @@ function navItemsForRole(role) {
     { id: 'feedback', label: 'Feedback' },
     { id: 'settings', label: 'Settings' },
     { id: 'profile', label: 'Profile' },
+    { id: 'change_password', label: 'Change Password' },
     { id: 'logout', label: 'Logout' },
   ];
 }
@@ -235,10 +238,69 @@ function renderAuth() {
             }
           },
         }, 'Sign in'),
+        el('div', { style: 'text-align:center; margin-top:16px' }, [
+          el('a', {
+            href: '#',
+            style: 'color: var(--accent-light); font-size: 13px; text-decoration: none',
+            onclick: (e) => {
+              e.preventDefault();
+              showForgotPasswordModal();
+            }
+          }, 'Forgot your password?'),
+        ]),
       ]),
     ]),
   ]);
   root.appendChild(card);
+}
+
+function showForgotPasswordModal() {
+  const backdrop = el('div', { class: 'modal-backdrop', onclick: (e) => { if (e.target === backdrop) backdrop.remove(); } });
+  const modal = el('div', { class: 'modal' }, [
+    el('div', { class: 'modal-header' }, [
+      el('div', { class: 'modal-title' }, 'Reset Password'),
+      el('button', { class: 'modal-close', onclick: () => backdrop.remove() }, '×'),
+    ]),
+    el('div', { class: 'modal-body' }, [
+      el('p', { style: 'margin-bottom: 16px; color: var(--muted)' }, 'Enter your email address and we\'ll send you a password reset link.'),
+      el('div', { class: 'label' }, 'Email Address'),
+      el('input', { class: 'input', id: 'reset-email', type: 'email', placeholder: 'you@clinic.test' }),
+    ]),
+    el('div', { class: 'modal-footer' }, [
+      el('button', { class: 'btn', onclick: () => backdrop.remove() }, 'Cancel'),
+      el('button', {
+        class: 'btn primary',
+        id: 'reset-submit-btn',
+        onclick: async () => {
+          const email = document.getElementById('reset-email').value.trim();
+          if (!email || !email.includes('@')) {
+            toast('bad', 'Invalid email', 'Please enter a valid email address');
+            return;
+          }
+          const btn = document.getElementById('reset-submit-btn');
+          btn.textContent = 'Sending...';
+          btn.disabled = true;
+          try {
+            const res = await API.post('/auth/request-password-reset', { email });
+            backdrop.remove();
+            toast('ok', 'Reset Link Sent', res.data.message);
+            // In demo mode, show the token
+            if (res.data.debug_token) {
+              console.log('Password Reset Token (demo):', res.data.debug_token);
+              console.log('Reset Link:', res.data.debug_link);
+            }
+          } catch (e) {
+            toast('bad', 'Request failed', e.message);
+            btn.textContent = 'Send Reset Link';
+            btn.disabled = false;
+          }
+        }
+      }, 'Send Reset Link'),
+    ]),
+  ]);
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+  document.getElementById('reset-email').focus();
 }
 
 function renderShell(inner) {
@@ -364,6 +426,7 @@ function render() {
   if (r === 'settings') return void renderSettings(page);
   if (r === 'feedback') return void renderFeedback(page);
   if (r === 'profile') return void renderProfile(page);
+  if (r === 'change_password') return void renderChangePassword(page);
 
   if (r === 'doctors') return void renderDoctors(page);
   if (r === 'staff') return void renderStaff(page);
@@ -374,28 +437,79 @@ function render() {
 
 async function renderDashboard(page) {
   page.innerHTML = '';
+  const role = state.user.role;
+  const today = new Date().toISOString().slice(0, 10);
+  
+  // Admin can toggle between Today and Stats views
+  const showStats = role === 'admin';
+  
   const card = el('div', { class: 'card full' }, [
-    el('h3', {}, 'Overview'),
-    el('div', { class: 'muted' }, 'Key stats for your role.'),
+    el('div', { class: 'row' }, [
+      el('h3', { style: 'margin:0' }, 'Today'),
+      el('div', { class: 'spacer' }),
+      showStats ? el('button', { class: 'btn small', id: 'dash-toggle', onclick: toggleView }, 'Show Stats') : null,
+    ]),
+    el('div', { class: 'muted', style: 'margin-top:4px' }, today),
     el('div', { style: 'height:12px' }),
-    el('div', { class: 'kpis', id: 'kpi-root' }, []),
+    el('div', { id: 'dash-content' }, el('div', { class: 'muted' }, 'Loading...')),
   ]);
   page.appendChild(card);
 
-  try {
-    const res = await API.get('/reports/dashboard');
-    const data = res.data.dashboard || {};
-    const k = document.getElementById('kpi-root');
-    k.innerHTML = '';
-    Object.entries(data).forEach(([label, value]) => {
-      k.appendChild(el('div', { class: 'kpi' }, [
-        el('div', { class: 'label' }, label.replaceAll('_', ' ')),
-        el('div', { class: 'value' }, String(value)),
-      ]));
-    });
-  } catch (e) {
-    toast('bad', 'Dashboard failed', e.message);
+  let viewMode = 'today'; // 'today' or 'stats'
+
+  function toggleView() {
+    viewMode = viewMode === 'today' ? 'stats' : 'today';
+    const btn = document.getElementById('dash-toggle');
+    if (btn) btn.textContent = viewMode === 'today' ? 'Show Stats' : 'Show Today';
+    loadContent();
   }
+
+  async function loadContent() {
+    const root = document.getElementById('dash-content');
+    root.innerHTML = '';
+    
+    if (viewMode === 'stats') {
+      // Show KPI stats for admin
+      try {
+        const res = await API.get('/reports/dashboard');
+        const data = res.data.dashboard || {};
+        const kpis = el('div', { class: 'kpis' }, []);
+        Object.entries(data).forEach(([label, value]) => {
+          kpis.appendChild(el('div', { class: 'kpi' }, [
+            el('div', { class: 'label' }, label.replaceAll('_', ' ')),
+            el('div', { class: 'value' }, String(value)),
+          ]));
+        });
+        root.appendChild(kpis);
+      } catch (e) {
+        root.appendChild(el('div', { class: 'muted' }, 'Failed to load stats.'));
+      }
+    } else {
+      // Show today's appointments
+      try {
+        const res = await API.get('/appointments', { from: today, to: today, page: 1, page_size: 100 });
+        const rows = res.data.items || [];
+        if (!rows.length) {
+          root.appendChild(el('div', { class: 'muted' }, 'No appointments today.'));
+          return;
+        }
+        root.appendChild(tableView({
+          columns: [
+            { key: 'appointment_time', label: 'Time', render: r => r.appointment_time.slice(0, 5) },
+            { key: 'patient_name', label: 'Patient' },
+            { key: 'doctor_name', label: 'Doctor' },
+            { key: 'status', label: 'Status', render: r => badgeStatus(r.status) },
+          ],
+          rows,
+          emptyText: 'No appointments today.',
+        }));
+      } catch (e) {
+        root.appendChild(el('div', { class: 'muted' }, 'Failed to load appointments.'));
+      }
+    }
+  }
+
+  loadContent();
 }
 
 function tableView({ columns, rows, emptyText }) {
@@ -645,24 +759,82 @@ async function renderMedicines(page) {
 }
 
 async function renderAppointments(page) {
+  // Parse filters from URL hash query
+  const hash = window.location.hash.split('?');
+  const query = new URLSearchParams(hash[1] || '');
+  const urlFrom = query.get('from') || new Date().toISOString().slice(0,10);
+  const urlTo = query.get('to') || new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+
   page.innerHTML = '';
   const canCreate = ['admin', 'staff', 'patient'].includes(state.user.role);
+  const canBatch = ['admin', 'staff'].includes(state.user.role);
+  
+  // Batch action bar (hidden by default)
+  const batchBar = el('div', { id: 'batch-bar', style: 'display:none; margin-bottom:12px; padding:10px 12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-xs);' }, [
+    el('span', { id: 'batch-count' }, '0 selected'),
+    el('span', { style: 'margin-left:16px' }, [
+      el('button', { class: 'btn small', onclick: () => batchUpdate('completed') }, 'Mark Completed'),
+      el('button', { class: 'btn small', style: 'margin-left:6px', onclick: () => batchUpdate('no_show') }, 'Mark No-Show'),
+      el('button', { class: 'btn small', style: 'margin-left:6px', onclick: () => clearSelection() }, 'Clear'),
+    ]),
+  ]);
+  
   const card = el('div', { class: 'card full' }, [
     el('div', { class: 'row' }, [
-      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'a-from', value: new Date().toISOString().slice(0,10) })]),
-      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'To'), el('input', { class: 'input', type: 'date', id: 'a-to', value: new Date(Date.now() + 7*86400000).toISOString().slice(0,10) })]),
+      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'a-from', value: urlFrom })]),
+      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'To'), el('input', { class: 'input', type: 'date', id: 'a-to', value: urlTo })]),
       el('div', { class: 'spacer' }),
       canCreate ? el('button', { class: 'btn primary', onclick: () => openAppointmentModal() }, 'Book Appointment') : null,
-      el('button', { class: 'btn', onclick: () => loadAppointments() }, 'Load'),
+      el('button', { class: 'btn', onclick: () => loadAppointments(true) }, 'Load'),
     ]),
     el('div', { style: 'height:12px' }),
+    canBatch ? batchBar : null,
     el('div', { id: 'a-table' }, el('div', { class: 'muted' }, 'Loading...')),
   ]);
   page.appendChild(card);
 
-  async function loadAppointments() {
+  const selectedIds = new Set();
+
+  function updateBatchBar() {
+    const bar = document.getElementById('batch-bar');
+    const count = document.getElementById('batch-count');
+    if (selectedIds.size > 0) {
+      bar.style.display = 'flex';
+      bar.style.alignItems = 'center';
+      count.textContent = `${selectedIds.size} selected`;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    document.querySelectorAll('.batch-check').forEach(cb => cb.checked = false);
+    updateBatchBar();
+  }
+
+  async function batchUpdate(status) {
+    if (!selectedIds.size) return;
+    const ids = Array.from(selectedIds);
+    try {
+      await Promise.all(ids.map(id => API.patch(`/appointments/${id}`, { status })));
+      toast('ok', 'Updated', `${ids.length} appointments marked as ${status.replace('_', ' ')}`);
+      clearSelection();
+      loadAppointments();
+    } catch (e) {
+      toast('bad', 'Update failed', e.message);
+    }
+  }
+
+  async function loadAppointments(updateUrl = false) {
     const from = document.getElementById('a-from').value;
     const to = document.getElementById('a-to').value;
+    
+    if (updateUrl) {
+      const search = new URLSearchParams({ from, to });
+      window.location.hash = `appointments?${search.toString()}`;
+    }
+
     try {
       const res = await API.get('/appointments', { from, to, page: 1, page_size: 50 });
       const rows = res.data.items || [];
@@ -670,30 +842,85 @@ async function renderAppointments(page) {
       root.innerHTML = '';
       root.appendChild(tableView({
         columns: [
+          ...(canBatch ? [{ key: 'select', label: '', render: (r) => `<input type="checkbox" class="batch-check" data-id="${r.appointment_id}" />` }] : []),
           { key: 'appointment_id', label: 'ID' },
           { key: 'appointment_date', label: 'Date' },
           { key: 'appointment_time', label: 'Time' },
           { key: 'doctor_name', label: 'Doctor' },
-          { key: 'patient_name', label: 'Patient' },
+          { key: 'patient_name', label: 'Patient', render: (r) => `<span class="patient-link" data-patient-id="${r.patient_id}">${escapeHtml(r.patient_name)}<span class="patient-card" data-loaded="false"><span class="pc-name">Loading...</span></span></span>` },
           { key: 'status', label: 'Status', render: (r) => badgeStatus(r.status) },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
+          { key: 'actions', label: 'Action', class: 'actions', render: (r) => {
             const role = state.user.role;
-            if (role === 'patient' && r.status === 'scheduled') return `<button class="btn small danger" data-act="cancel" data-id="${r.appointment_id}">Cancel</button>`;
-            if (role === 'doctor') return `<button class="btn small" data-act="done" data-id="${r.appointment_id}">Mark Completed</button>`;
-            if (role === 'admin' || role === 'staff') return `<button class="btn small" data-act="edit" data-id="${r.appointment_id}">Edit</button>`;
+            const status = r.status;
+            // Patient: can only cancel scheduled appointments
+            if (role === 'patient') {
+              if (status === 'scheduled') return `<button class="btn small danger" data-act="cancel" data-id="${r.appointment_id}">Cancel</button>`;
+              return '';
+            }
+            // Doctor: context-aware next action
+            if (role === 'doctor') {
+              if (status === 'scheduled' || status === 'confirmed') return `<button class="btn small" data-act="done" data-id="${r.appointment_id}">Complete</button>`;
+              return '';
+            }
+            // Admin/Staff: context-aware workflow
+            if (role === 'admin' || role === 'staff') {
+              if (status === 'scheduled') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="confirmed">Confirm</button>`;
+              if (status === 'confirmed') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="in_progress">Check In</button>`;
+              if (status === 'in_progress') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="completed">Complete</button>`;
+              if (status === 'completed') return `<button class="btn small" data-act="bill" data-id="${r.appointment_id}" data-patient="${r.patient_id}">Bill</button>`;
+              return ''; // cancelled, no_show - no action
+            }
             return '';
           }},
         ],
         rows,
         emptyText: 'No appointments found.',
       }));
+      // Attach checkbox handlers for batch selection
+      root.querySelectorAll('.batch-check').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          const id = Number(cb.dataset.id);
+          if (cb.checked) selectedIds.add(id);
+          else selectedIds.delete(id);
+          updateBatchBar();
+        });
+      });
+      // Attach hover listeners for patient cards
+      root.querySelectorAll('.patient-link').forEach((link) => {
+        link.addEventListener('mouseenter', async () => {
+          const card = link.querySelector('.patient-card');
+          if (card.dataset.loaded === 'true') return;
+          const patientId = link.dataset.patientId;
+          try {
+            const pRes = await API.get(`/patients/${patientId}`);
+            const p = pRes.data.patient;
+            card.innerHTML = `<div class="pc-name">${escapeHtml(p.name)}</div><div class="pc-row">📞 <b>${escapeHtml(p.mobile || 'N/A')}</b></div><div class="pc-row">🩸 ${escapeHtml(p.blood_group || 'N/A')}</div>`;
+            card.dataset.loaded = 'true';
+          } catch {
+            card.innerHTML = '<div class="pc-name">Failed to load</div>';
+          }
+        });
+      });
       root.querySelectorAll('button[data-act]').forEach((b) => {
         b.addEventListener('click', async () => {
           const id = Number(b.getAttribute('data-id'));
           const act = b.getAttribute('data-act');
           if (act === 'cancel') return cancelAppointment(id);
           if (act === 'done') return markCompleted(id);
-          if (act === 'edit') return openAppointmentModal(id);
+          if (act === 'status') {
+            const nextStatus = b.dataset.next;
+            try {
+              await API.patch(`/appointments/${id}`, { status: nextStatus });
+              toast('ok', 'Updated', `Status changed to ${nextStatus.replace('_', ' ')}`);
+              loadAppointments();
+            } catch (e) {
+              toast('bad', 'Update failed', e.message);
+            }
+          }
+          if (act === 'bill') {
+            // Navigate to billing page - in a real app this would open bill creation modal
+            setHash('billing');
+          }
         });
       });
     } catch (e) {
@@ -958,6 +1185,8 @@ async function renderBilling(page) {
 async function renderReports(page) {
   page.innerHTML = '';
   const role = state.user.role;
+  const isStaffOrAdmin = role === 'admin' || role === 'staff';
+  
   const card = el('div', { class: 'card full' }, [
     el('h3', {}, 'Reports'),
     el('div', { class: 'muted' }, 'Appointments per doctor, revenue, and patient history.'),
@@ -968,10 +1197,51 @@ async function renderReports(page) {
       el('div', { class: 'spacer' }),
       el('button', { class: 'btn', onclick: () => loadReports() }, 'Generate'),
     ]),
+    // Export buttons for admin/staff
+    isStaffOrAdmin ? el('div', { style: 'margin-top:16px; display:flex; gap:10px; flex-wrap:wrap' }, [
+      el('button', { 
+        class: 'btn small', 
+        onclick: () => downloadCsv('appointments'),
+        title: 'Download appointments as CSV'
+      }, '📥 Export Appointments CSV'),
+      el('button', { 
+        class: 'btn small', 
+        onclick: () => downloadCsv('billing'),
+        title: 'Download billing records as CSV'
+      }, '📥 Export Billing CSV'),
+    ]) : null,
     el('div', { style: 'height:12px' }),
     el('div', { id: 'r-out' }, el('div', { class: 'muted' }, 'Select a range and click Generate.')),
   ]);
   page.appendChild(card);
+
+  function downloadCsv(type) {
+    const from = document.getElementById('r-from').value;
+    const to = document.getElementById('r-to').value;
+    const url = `/api.php?route=/reports/${type}/csv&from=${from}&to=${to}`;
+    const filename = `clinic_${type}_report_${from}_to_${to}.csv`;
+    
+    // Use fetch + blob to force proper file download with filename
+    fetch(url, { credentials: 'include' })
+      .then(response => {
+        if (!response.ok) throw new Error('Export failed');
+        return response.blob();
+      })
+      .then(blob => {
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        toast('ok', 'Download Complete', `${type.charAt(0).toUpperCase() + type.slice(1)} report saved as ${filename}`);
+      })
+      .catch(err => {
+        toast('bad', 'Export Failed', err.message);
+      });
+  }
 
   async function loadReports() {
     const from = document.getElementById('r-from').value;
@@ -1129,6 +1399,22 @@ async function renderProfile(page) {
         el('div', { id: 'profile-role', class: 'muted' }, 'Loading...'),
       ]),
     ]),
+    el('div', { style: 'height:16px' }),
+    el('div', { class: 'card half' }, [
+      el('h3', {}, 'Change Password'),
+      el('div', { class: 'label' }, 'New Password'),
+      el('input', { class: 'input', type: 'password', id: 'new-pw', placeholder: 'Enter new password' }),
+      el('div', { style: 'height:12px' }),
+      el('button', { class: 'btn primary', onclick: async () => {
+        const pw = document.getElementById('new-pw').value;
+        if (!pw || pw.length < 6) { toast('bad', 'Error', 'Password must be at least 6 characters'); return; }
+        try {
+          await API.post('/auth/change-password', { new_password: pw });
+          toast('ok', 'Success', 'Password updated');
+          document.getElementById('new-pw').value = '';
+        } catch (e) { toast('bad', 'Error', e.message); }
+      }}, 'Update Password'),
+    ]),
   ]);
   page.appendChild(card);
 
@@ -1148,6 +1434,35 @@ async function renderProfile(page) {
     }
   } catch (e) {
     toast('bad', 'Profile failed', e.message);
+  }
+}
+
+async function renderChangePassword(page) {
+  page.innerHTML = '';
+  const card = el('div', { class: 'card half' }, [
+    el('h3', {}, 'Change Password'),
+    el('div', { class: 'muted' }, 'Update your password securely.'),
+    el('div', { style: 'height:16px' }),
+    el('div', { class: 'label' }, 'Current Password'),
+    el('input', { class: 'input', type: 'password', id: 'cp-current' }),
+    el('div', { class: 'label' }, 'New Password'),
+    el('input', { class: 'input', type: 'password', id: 'cp-new' }),
+     el('div', { class: 'muted', style: 'font-size:12px; margin-top:4px' }, 'Min 8 chars, 1 uppercase, 1 number'),
+    el('div', { style: 'height:16px' }),
+    el('button', { class: 'btn primary', onclick: doChangePassword }, 'Update Password'),
+  ]);
+  page.appendChild(card);
+
+  async function doChangePassword() {
+    const current_password = document.getElementById('cp-current').value;
+    const new_password = document.getElementById('cp-new').value;
+    try {
+      await API.post('/auth/change-password', { current_password, new_password });
+      toast('ok', 'Success', 'Password changed');
+      setHash('dashboard');
+    } catch (e) {
+      toast('bad', 'Error', e.message);
+    }
   }
 }
 

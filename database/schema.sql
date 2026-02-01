@@ -302,3 +302,47 @@ CREATE TABLE feedback (
   CONSTRAINT chk_feedback_rating CHECK (rating BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- 16) login_rate_limits (security - rate limiting)
+CREATE TABLE login_rate_limits (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip_address VARCHAR(45) NOT NULL,
+  login_email VARCHAR(190) NULL,
+  attempt_count INT NOT NULL DEFAULT 1,
+  first_attempt_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  locked_until TIMESTAMP NULL,
+  PRIMARY KEY (id),
+  KEY idx_rate_ip (ip_address),
+  KEY idx_rate_email (login_email),
+  KEY idx_rate_first_attempt (first_attempt_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Additional Performance Indexes
+-- Improve appointment report queries
+CREATE INDEX idx_appointments_status_date ON appointments(status, appointment_date);
+
+-- Speed up billing lookups by date
+CREATE INDEX idx_billing_date ON billing(bill_date);
+
+-- Improve patient search
+CREATE INDEX idx_patients_blood_group ON patients(blood_group);
+
+-- Optimize medicine expiry checks
+CREATE INDEX idx_medicines_expiry ON medicines(expiry_date);
+
+-- 17) password_reset_tokens (for password recovery)
+CREATE TABLE password_reset_tokens (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  token VARCHAR(64) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_reset_token (token),
+  KEY idx_reset_user (user_id),
+  KEY idx_reset_expires (expires_at),
+  CONSTRAINT fk_reset_user
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
