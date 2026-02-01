@@ -1,0 +1,42 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: cms_db
+    environment:
+      MYSQL_NATIVE_PASSWORD: 1
+      MYSQL_DATABASE: clinic_management
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: cms
+      MYSQL_PASSWORD: cms
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cms_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CMS_DB_HOST: db
+      CMS_DB_PORT: 3306
+      CMS_DB_NAME: clinic_management
+      CMS_DB_USER: cms
+      CMS_DB_PASS: cms
+      CMS_DEBUG: 1
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:
