@@ -9,7 +9,7 @@ SET time_zone = '+00:00';
 -- Create database (optional). Uncomment if you want the script to create it.
 -- CREATE DATABASE IF NOT EXISTS clinic_management
 --   CHARACTER SET utf8mb4
---   COLLATE utf8mb4_0900_ai_ci;
+--   COLLATE utf8mb4_unicode_ci;
 -- USE clinic_management;
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -45,7 +45,7 @@ CREATE TABLE users (
   PRIMARY KEY (user_id),
   UNIQUE KEY uq_users_login_email (login_email),
   KEY idx_users_role_status (role, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5) departments
 CREATE TABLE departments (
@@ -56,7 +56,7 @@ CREATE TABLE departments (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (department_id),
   UNIQUE KEY uq_departments_name (department_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 12) staff
 -- requirement.pdf columns: staff_id, role, salary, joining_date, status
@@ -76,7 +76,7 @@ CREATE TABLE staff (
   CONSTRAINT fk_staff_user
     FOREIGN KEY (user_id) REFERENCES users(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2) patients
 CREATE TABLE patients (
@@ -97,7 +97,7 @@ CREATE TABLE patients (
   CONSTRAINT fk_patients_user
     FOREIGN KEY (user_id) REFERENCES users(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3) doctors
 CREATE TABLE doctors (
@@ -123,7 +123,7 @@ CREATE TABLE doctors (
   CONSTRAINT fk_doctors_department
     FOREIGN KEY (department_id) REFERENCES departments(department_id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6) doctor_schedule
 CREATE TABLE doctor_schedule (
@@ -142,7 +142,7 @@ CREATE TABLE doctor_schedule (
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT chk_schedule_times CHECK (start_time < end_time),
   CONSTRAINT chk_schedule_max_patients CHECK (max_patients > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4) appointments
 CREATE TABLE appointments (
@@ -164,7 +164,7 @@ CREATE TABLE appointments (
   CONSTRAINT fk_appointments_doctor
     FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7) patient_history
 -- requirement.pdf columns: patient_id, doctor_id, visit_date
@@ -186,7 +186,7 @@ CREATE TABLE patient_history (
   CONSTRAINT fk_history_doctor
     FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8) medicines
 CREATE TABLE medicines (
@@ -202,7 +202,7 @@ CREATE TABLE medicines (
   KEY idx_medicines_name (medicine_name),
   CONSTRAINT chk_medicines_price CHECK (price >= 0),
   CONSTRAINT chk_medicines_stock CHECK (stock >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9) billing
 CREATE TABLE billing (
@@ -218,7 +218,7 @@ CREATE TABLE billing (
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT chk_billing_total_amount CHECK (total_amount >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 10) billing_items
 CREATE TABLE billing_items (
@@ -237,7 +237,7 @@ CREATE TABLE billing_items (
   CONSTRAINT chk_billing_items_qty CHECK (quantity > 0),
   CONSTRAINT chk_billing_items_price CHECK (price >= 0),
   CONSTRAINT chk_billing_items_total CHECK (total >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 11) payments
 CREATE TABLE payments (
@@ -254,7 +254,7 @@ CREATE TABLE payments (
     FOREIGN KEY (bill_id) REFERENCES billing(bill_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT chk_payments_amount CHECK (amount > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 13) clinic_settings
 CREATE TABLE clinic_settings (
@@ -267,7 +267,7 @@ CREATE TABLE clinic_settings (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (setting_id),
   KEY idx_settings_clinic_name (clinic_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 14) reports
 -- requirement.pdf columns: report_id, report_type, generated_by, generated_date
@@ -285,7 +285,7 @@ CREATE TABLE reports (
   CONSTRAINT fk_reports_generated_by
     FOREIGN KEY (generated_by) REFERENCES users(user_id)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 15) feedback
 CREATE TABLE feedback (
@@ -300,7 +300,7 @@ CREATE TABLE feedback (
     FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT chk_feedback_rating CHECK (rating BETWEEN 1 AND 5)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 16) login_rate_limits (security - rate limiting)
 CREATE TABLE login_rate_limits (
@@ -314,7 +314,7 @@ CREATE TABLE login_rate_limits (
   KEY idx_rate_ip (ip_address),
   KEY idx_rate_email (login_email),
   KEY idx_rate_first_attempt (first_attempt_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Additional Performance Indexes
 -- Improve appointment report queries
@@ -344,5 +344,5 @@ CREATE TABLE password_reset_tokens (
   CONSTRAINT fk_reset_user
     FOREIGN KEY (user_id) REFERENCES users(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

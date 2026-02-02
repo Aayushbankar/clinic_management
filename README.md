@@ -65,16 +65,26 @@
 
 ## 🚀 Quick Start
 
-### Docker (Recommended)
+### One-Command Setup (Recommended)
 
 ```bash
-# Clone and start
-git clone <repository-url>
-cd clinic_management_cursor
-docker compose up -d --build
+# Windows (requires Python + XAMPP)
+python run.py
 
-# Open http://localhost:8080
+# Linux (requires Docker)
+./run.py
 ```
+
+**What it does:**
+- ✅ Detects your environment (XAMPP on Windows, Docker on Linux)
+- ✅ Checks MySQL service is running
+- ✅ Creates database and imports schema/seed data
+- ✅ Starts the development server
+- ✅ Displays demo login credentials
+
+**Access:**
+- **Windows**: http://127.0.0.1:8000
+- **Linux/Docker**: http://localhost:8080
 
 ### Demo Credentials
 
@@ -85,13 +95,18 @@ docker compose up -d --build
 | Staff   | `staff@clinic.test`   | `Staff@123`   |
 | Patient | `patient@clinic.test` | `Patient@123` |
 
-### Manual Setup
+### Platform-Specific Guides
+
+- **Windows**: [XAMPP Setup Guide](docs/WINDOWS_XAMPP_SETUP.md) | [Local Setup Guide](docs/WINDOWS_LOCAL_SETUP.md)
+- **Linux**: Uses Docker automatically via `./run.py`
+
+### Manual Setup (Advanced)
 
 ```bash
 # 1. Database
-mysql -u root -p -e "CREATE DATABASE clinic_management CHARACTER SET utf8mb4;"
-mysql -u root -p clinic_management < database/schema.sql
-mysql -u root -p clinic_management < database/seed.sql
+mysql -u root -e "CREATE DATABASE clinic_management CHARACTER SET utf8mb4;"
+mysql -u root clinic_management < database/schema.sql
+mysql -u root clinic_management < database/seed.sql
 
 # 2. Environment
 export CMS_DB_HOST=127.0.0.1
@@ -100,7 +115,7 @@ export CMS_DB_USER=root
 export CMS_DB_PASS=your_password
 
 # 3. Run
-php -S 127.0.0.1:8000 -t backend/public
+php -S 127.0.0.1:8000 -t backend/public backend/public/index.php
 ```
 
 ---

@@ -165,8 +165,8 @@
 - Try hard refresh (Ctrl+Shift+R)
 
 ### Page not loading
-- Check if Docker containers are running: `docker ps`
-- Rebuild if needed: `docker compose up -d --build`
+- Check if the server is running: `python run.py`
+- For Docker: `docker ps` and `docker compose up -d --build`
 
 ---
 

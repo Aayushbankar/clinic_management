@@ -14,18 +14,24 @@ if (!is_string($path) || $path === '') $path = '/';
 if (strlen($path) > 1) $path = rtrim($path, '/');
 
 // Do not handle API
+// Do not handle API
+// When using php -S, returning false tells the server to serve the requested file directly.
+// This allows api.php to execute as its own script.
 if ($path === '/api.php' || str_starts_with($path, '/api.php/')) {
-    http_response_code(404);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo "Use /api.php?route=/...\n";
-    exit;
+    return false;
 }
 
 // Serve shared assets from project /assets
-if (str_starts_with($path, '/assets/')) {
+// Serve shared assets from project /assets
+// Look for '/assets/' segment in the URL to support both root and subdirectory installs
+$assetPos = strpos($path, '/assets/');
+if ($assetPos !== false) {
+    $relAssetPath = substr($path, $assetPos + strlen('/assets/'));
+    
     $projectRoot = realpath(__DIR__ . '/../..');
     $assetsRoot = realpath($projectRoot . '/assets');
-    $file = realpath($assetsRoot . substr($path, strlen('/assets')));
+    $file = realpath($assetsRoot . '/' . $relAssetPath);
+    
     if ($projectRoot === false || $assetsRoot === false || $file === false || !str_starts_with($file, $assetsRoot)) {
         http_response_code(404);
         exit;
@@ -60,6 +66,7 @@ if (str_starts_with($path, '/assets/')) {
 // Serve SPA
 $projectRoot = realpath(__DIR__ . '/../..');
 $frontendIndex = $projectRoot !== false ? ($projectRoot . '/frontend/index.html') : null;
+
 if ($frontendIndex === null || !is_file($frontendIndex)) {
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');

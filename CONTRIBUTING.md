@@ -5,9 +5,9 @@ Thank you for considering contributing to the Clinic Management System!
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
-- PHP 8.3+ (for local development)
-- MySQL 8.4+
+- Python 3.x
+- PHP 8.3+ (via XAMPP or standalone)
+- MySQL 8.x
 - Git
 
 ### Development Setup
@@ -17,10 +17,10 @@ Thank you for considering contributing to the Clinic Management System!
 git clone <repository-url>
 cd clinic_management_cursor
 
-# Start containers
-docker compose up -d --build
+# Run (Auto-detects Docker vs Native)
+python run.py
 
-# Access at http://localhost:8080
+# Access at http://127.0.0.1:8000 (Windows) or http://localhost:8080 (Docker)
 ```
 
 ## 🔧 Development Workflow

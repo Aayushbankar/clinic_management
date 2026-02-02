@@ -1,14 +1,16 @@
 # 🏥 Clinic Management System - Client Handover Guide
 
-**Version:** 1.1.1
-**Delivery Date:** 2026-02-01
+**Version:** 1.2.0  
+**Delivery Date:** 2026-02-02
 
 Welcome to your new Clinic Management System! This document provides everything you need to run, use, and test the system.
 
 ---
 
-## 🆕 What's New in v1.1.1
+## 🆕 What's New in v1.2.0
 
+- **Cross-Platform Runner**: Single `run.py` script works on Windows and Linux
+- **Automatic Setup**: Database creation and seeding handled automatically
 - **Password Reset**: Forgot your password? Click the link on the login page
 - **CSV Exports**: Download appointments and billing reports from Reports page
 - **Rate Limiting**: Account protection after 5 failed login attempts
@@ -16,29 +18,33 @@ Welcome to your new Clinic Management System! This document provides everything 
 
 ---
 
-## ⚡ Quick Start (Recommended)
+## ⚡ Quick Start
 
-The easiest way to run the system is using **Docker**. This ensures all dependencies (PHP, MySQL, Server) are set up automatically.
+### Windows (XAMPP)
 
-### 1. Requirements
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed on your machine.
+1. Install [XAMPP](https://www.apachefriends.org/download.html) with PHP 8.2+
+2. Start MySQL from XAMPP Control Panel
+3. Open PowerShell in the project folder and run:
 
-### 2. Run the System
-Open your terminal (Command Prompt/PowerShell) in the project folder and run:
+```powershell
+python run.py
+```
+
+4. Open browser: **http://127.0.0.1:8000**
+
+### Linux (Docker)
 
 ```bash
+./run.py
+# Or manually:
 docker compose up -d --build
 ```
 
-### 3. Access the System
-Once the command finishes, open your browser and visit:
-👉 **[http://localhost:8080](http://localhost:8080)**
+Open browser: **http://localhost:8080**
 
 ---
 
 ## 🔑 Login Credentials (Demo Accounts)
-
-The system comes pre-loaded with these demo accounts for you to test each role:
 
 | Role        | Email                 | Password      | Access Level        |
 | :---------- | :-------------------- | :------------ | :------------------ |
@@ -79,17 +85,16 @@ The system comes pre-loaded with these demo accounts for you to test each role:
 
 ## 🧪 How to Verify (End-to-End Testing)
 
-We have included an automated test script that simulates a real user journey (Admin -> Dept -> Doctor -> Patient -> Booking).
+We have included an automated test script that simulates a real user journey.
 
-### 1. Run the Test
-In your terminal, run:
+### Run the Test
 
 ```bash
-python3 e2e_test.py
+python e2e_test.py
 ```
 
-### 2. Expected Output
-You will see logs indicating success:
+### Expected Output
+
 ```text
 [INFO] Logging in as admin... success
 [INFO] Creating Department... success
@@ -97,33 +102,33 @@ You will see logs indicating success:
 [INFO] Patient booking appointment... success
 [INFO] E2E Test Completed Successfully
 ```
+
 If you see this, the system is 100% functional.
-
----
-
-## 🔧 Manual Setup (Without Docker)
-
-If you cannot use Docker, follow these steps to install manually:
-
-1.  **Install XAMPP/WAMP/MAMP** (Apache + MySQL + PHP).
-2.  **Database:**
-    *   Open PHPMyAdmin.
-    *   Create a database named `clinic_management`.
-    *   Import `database/schema.sql`.
-    *   Import `database/seed.sql`.
-3.  **Backend Config:**
-    *   Set environment variables (or edit `backend/src/config/config.php` temporarily) to match your DB credentials.
-4.  **Run:**
-    *   Point your web server (Apache) to the `backend/public` folder.
-    *   **Important:** Ensure `backend/public/assets` is a valid link to the `assets` folder in the root.
 
 ---
 
 ## ❓ Troubleshooting
 
--   **"Port 8080 is already in use"**: Open `docker-compose.yml` and change `"8080:80"` to `"8081:80"`. Access at `http://localhost:8081`.
--   **"Database connection error"**: Ensure the `cms_db` container is running (`docker compose ps`).
--   **"404 Not Found" on assets**: Ensure the symlink in the Dockerfile is correct (already fixed in this delivery).
+| Issue | Solution |
+| ----- | -------- |
+| "Port 8080 is already in use" | Change port in `docker-compose.yml` or `run.py` |
+| "Database connection error" | Ensure MySQL is running (XAMPP or Docker) |
+| "404 Not Found" on assets | Restart the server with `python run.py` |
+| Login fails with 500 error | Database may be empty; re-run `python run.py` |
 
 ---
-**Enjoy your Clinic Management System!**
+
+## 📁 Project Structure
+
+```
+clinic_management_cursor/
+├── run.py              ← Start here! Unified runner
+├── backend/            ← PHP API and frontend
+├── database/           ← SQL schema and seed data
+├── docs/               ← Documentation
+└── docker-compose.yml  ← Linux/Docker setup
+```
+
+---
+
+**Enjoy your Clinic Management System! 🏥**

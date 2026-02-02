@@ -4,7 +4,8 @@
 
 const API = {
   async request(route, { method = 'GET', body, query } = {}) {
-    const url = new URL('/api.php', window.location.origin);
+    // Relative path handles subdirectories (e.g. localhost/clinic/backend/public/api.php)
+    const url = new URL('api.php', window.location.href.split('?')[0].split('#')[0]);
     url.searchParams.set('route', route);
     if (query && typeof query === 'object') {
       Object.entries(query).forEach(([k, v]) => {
@@ -197,7 +198,7 @@ function renderAuth() {
     el('div', { class: 'auth-card' }, [
       el('div', { class: 'auth-left' }, [
         el('div', { class: 'row' }, [
-          el('img', { src: '/assets/logo.svg', alt: 'Clinic', width: '46', height: '46' }),
+          el('img', { src: 'assets/logo.svg', alt: 'Clinic', width: '46', height: '46' }),
           el('div', {}, [
             el('div', { style: 'font-weight:750; font-size:14px' }, 'Clinic Management System'),
             el('div', { class: 'muted', style: 'font-size:12px; margin-top:2px' }, 'Secure • Fast • Responsive'),
@@ -312,7 +313,7 @@ function renderShell(inner) {
 
   const sidebar = el('aside', { class: 'sidebar' }, [
     el('div', { class: 'brand' }, [
-      el('img', { src: '/assets/logo.svg', alt: 'Clinic logo' }),
+      el('img', { src: 'assets/logo.svg', alt: 'Clinic logo' }),
       el('div', {}, [
         el('div', { class: 'title' }, 'Clinic CMS'),
         el('div', { class: 'subtitle' }, role.toUpperCase()),
@@ -399,7 +400,7 @@ function render() {
 
   if (state.route === 'logout') {
     (async () => {
-      try { await API.post('/auth/logout', {}); } catch {}
+      try { await API.post('/auth/logout', {}); } catch { }
       state.user = null;
       state.csrfToken = null;
       toast('ok', 'Logged out', 'See you next time');
@@ -439,10 +440,10 @@ async function renderDashboard(page) {
   page.innerHTML = '';
   const role = state.user.role;
   const today = new Date().toISOString().slice(0, 10);
-  
+
   // Admin can toggle between Today and Stats views
   const showStats = role === 'admin';
-  
+
   const card = el('div', { class: 'card full' }, [
     el('div', { class: 'row' }, [
       el('h3', { style: 'margin:0' }, 'Today'),
@@ -467,7 +468,7 @@ async function renderDashboard(page) {
   async function loadContent() {
     const root = document.getElementById('dash-content');
     root.innerHTML = '';
-    
+
     if (viewMode === 'stats') {
       // Show KPI stats for admin
       try {
@@ -517,7 +518,7 @@ function tableView({ columns, rows, emptyText }) {
     return el('div', { class: 'muted' }, emptyText || 'No data');
   }
   const thead = el('thead', {}, el('tr', {}, columns.map((c) => el('th', {}, c.label))));
-  const tbody = el('tbody', {}, rows.map((r) => el('tr', {}, columns.map((c) => el('td', { class: c.class || '' , html: c.render ? c.render(r) : escapeHtml(String(r[c.key] ?? '')) })) )));
+  const tbody = el('tbody', {}, rows.map((r) => el('tr', {}, columns.map((c) => el('td', { class: c.class || '', html: c.render ? c.render(r) : escapeHtml(String(r[c.key] ?? '')) })))));
   const t = el('table', { class: 'table' }, [thead, tbody]);
   return t;
 }
@@ -553,13 +554,15 @@ async function renderDepartments(page) {
           { key: 'department_name', label: 'Name' },
           { key: 'description', label: 'Description' },
           { key: 'updated_at', label: 'Updated' },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
-            if (state.user.role !== 'admin') return '';
-            return `
+          {
+            key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
+              if (state.user.role !== 'admin') return '';
+              return `
               <button class="btn small" data-act="edit" data-id="${r.department_id}">Edit</button>
               <button class="btn small danger" data-act="del" data-id="${r.department_id}">Delete</button>
             `;
-          }},
+            }
+          },
         ],
         rows,
         emptyText: 'No departments found.',
@@ -665,13 +668,15 @@ async function renderMedicines(page) {
           { key: 'price', label: 'Price' },
           { key: 'stock', label: 'Stock' },
           { key: 'expiry_date', label: 'Expiry' },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
-            if (!canWrite) return '';
-            return `
+          {
+            key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
+              if (!canWrite) return '';
+              return `
               <button class="btn small" data-act="edit" data-id="${r.medicine_id}">Edit</button>
               <button class="btn small danger" data-act="del" data-id="${r.medicine_id}">Delete</button>
             `;
-          }},
+            }
+          },
         ],
         rows,
         emptyText: 'No medicines found.',
@@ -762,13 +767,13 @@ async function renderAppointments(page) {
   // Parse filters from URL hash query
   const hash = window.location.hash.split('?');
   const query = new URLSearchParams(hash[1] || '');
-  const urlFrom = query.get('from') || new Date().toISOString().slice(0,10);
-  const urlTo = query.get('to') || new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+  const urlFrom = query.get('from') || new Date().toISOString().slice(0, 10);
+  const urlTo = query.get('to') || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
   page.innerHTML = '';
   const canCreate = ['admin', 'staff', 'patient'].includes(state.user.role);
   const canBatch = ['admin', 'staff'].includes(state.user.role);
-  
+
   // Batch action bar (hidden by default)
   const batchBar = el('div', { id: 'batch-bar', style: 'display:none; margin-bottom:12px; padding:10px 12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-xs);' }, [
     el('span', { id: 'batch-count' }, '0 selected'),
@@ -778,7 +783,7 @@ async function renderAppointments(page) {
       el('button', { class: 'btn small', style: 'margin-left:6px', onclick: () => clearSelection() }, 'Clear'),
     ]),
   ]);
-  
+
   const card = el('div', { class: 'card full' }, [
     el('div', { class: 'row' }, [
       el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'a-from', value: urlFrom })]),
@@ -829,7 +834,7 @@ async function renderAppointments(page) {
   async function loadAppointments(updateUrl = false) {
     const from = document.getElementById('a-from').value;
     const to = document.getElementById('a-to').value;
-    
+
     if (updateUrl) {
       const search = new URLSearchParams({ from, to });
       window.location.hash = `appointments?${search.toString()}`;
@@ -849,29 +854,31 @@ async function renderAppointments(page) {
           { key: 'doctor_name', label: 'Doctor' },
           { key: 'patient_name', label: 'Patient', render: (r) => `<span class="patient-link" data-patient-id="${r.patient_id}">${escapeHtml(r.patient_name)}<span class="patient-card" data-loaded="false"><span class="pc-name">Loading...</span></span></span>` },
           { key: 'status', label: 'Status', render: (r) => badgeStatus(r.status) },
-          { key: 'actions', label: 'Action', class: 'actions', render: (r) => {
-            const role = state.user.role;
-            const status = r.status;
-            // Patient: can only cancel scheduled appointments
-            if (role === 'patient') {
-              if (status === 'scheduled') return `<button class="btn small danger" data-act="cancel" data-id="${r.appointment_id}">Cancel</button>`;
+          {
+            key: 'actions', label: 'Action', class: 'actions', render: (r) => {
+              const role = state.user.role;
+              const status = r.status;
+              // Patient: can only cancel scheduled appointments
+              if (role === 'patient') {
+                if (status === 'scheduled') return `<button class="btn small danger" data-act="cancel" data-id="${r.appointment_id}">Cancel</button>`;
+                return '';
+              }
+              // Doctor: context-aware next action
+              if (role === 'doctor') {
+                if (status === 'scheduled' || status === 'confirmed') return `<button class="btn small" data-act="done" data-id="${r.appointment_id}">Complete</button>`;
+                return '';
+              }
+              // Admin/Staff: context-aware workflow
+              if (role === 'admin' || role === 'staff') {
+                if (status === 'scheduled') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="confirmed">Confirm</button>`;
+                if (status === 'confirmed') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="in_progress">Check In</button>`;
+                if (status === 'in_progress') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="completed">Complete</button>`;
+                if (status === 'completed') return `<button class="btn small" data-act="bill" data-id="${r.appointment_id}" data-patient="${r.patient_id}">Bill</button>`;
+                return ''; // cancelled, no_show - no action
+              }
               return '';
             }
-            // Doctor: context-aware next action
-            if (role === 'doctor') {
-              if (status === 'scheduled' || status === 'confirmed') return `<button class="btn small" data-act="done" data-id="${r.appointment_id}">Complete</button>`;
-              return '';
-            }
-            // Admin/Staff: context-aware workflow
-            if (role === 'admin' || role === 'staff') {
-              if (status === 'scheduled') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="confirmed">Confirm</button>`;
-              if (status === 'confirmed') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="in_progress">Check In</button>`;
-              if (status === 'in_progress') return `<button class="btn small" data-act="status" data-id="${r.appointment_id}" data-next="completed">Complete</button>`;
-              if (status === 'completed') return `<button class="btn small" data-act="bill" data-id="${r.appointment_id}" data-patient="${r.patient_id}">Bill</button>`;
-              return ''; // cancelled, no_show - no action
-            }
-            return '';
-          }},
+          },
         ],
         rows,
         emptyText: 'No appointments found.',
@@ -951,7 +958,7 @@ async function renderAppointments(page) {
 
   async function openAppointmentModal(id) {
     const isEdit = !!id;
-    let current = { patient_id: '', doctor_id: '', appointment_date: new Date().toISOString().slice(0,10), appointment_time: '10:00' };
+    let current = { patient_id: '', doctor_id: '', appointment_date: new Date().toISOString().slice(0, 10), appointment_time: '10:00' };
     if (isEdit) {
       const res = await API.get(`/appointments/${id}`);
       current = res.data.appointment;
@@ -970,7 +977,7 @@ async function renderAppointments(page) {
       el('input', { class: 'input', id: 'ap-doctor', type: 'number', value: current.doctor_id || '' }),
       el('div', { class: 'row' }, [
         el('div', { style: 'flex:1' }, [el('div', { class: 'label' }, 'Date'), el('input', { class: 'input', id: 'ap-date', type: 'date', value: current.appointment_date || '' })]),
-        el('div', { style: 'flex:1' }, [el('div', { class: 'label' }, 'Time'), el('input', { class: 'input', id: 'ap-time', type: 'time', value: (current.appointment_time || '10:00:00').slice(0,5) })]),
+        el('div', { style: 'flex:1' }, [el('div', { class: 'label' }, 'Time'), el('input', { class: 'input', id: 'ap-time', type: 'time', value: (current.appointment_time || '10:00:00').slice(0, 5) })]),
       ]),
       el('div', { style: 'height:12px' }),
       el('div', { class: 'row' }, [
@@ -1011,8 +1018,8 @@ async function renderBilling(page) {
   const canWrite = ['admin', 'staff'].includes(state.user.role);
   const card = el('div', { class: 'card full' }, [
     el('div', { class: 'row' }, [
-      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'b-from', value: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10) })]),
-      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'To'), el('input', { class: 'input', type: 'date', id: 'b-to', value: new Date().toISOString().slice(0,10) })]),
+      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'b-from', value: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10) })]),
+      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'To'), el('input', { class: 'input', type: 'date', id: 'b-to', value: new Date().toISOString().slice(0, 10) })]),
       el('div', { class: 'spacer' }),
       canWrite ? el('button', { class: 'btn primary', onclick: () => openBillModal() }, 'Create Bill') : null,
       el('button', { class: 'btn', onclick: () => loadBills() }, 'Load'),
@@ -1038,11 +1045,13 @@ async function renderBilling(page) {
           { key: 'total_amount', label: 'Total' },
           { key: 'paid_amount', label: 'Paid' },
           { key: 'due_amount', label: 'Due' },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
-            const view = `<button class="btn small" data-act="view" data-id="${r.bill_id}">View</button>`;
-            if (!canWrite) return view;
-            return `${view} <button class="btn small" data-act="pay" data-id="${r.bill_id}">Add Payment</button>`;
-          }},
+          {
+            key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
+              const view = `<button class="btn small" data-act="view" data-id="${r.bill_id}">View</button>`;
+              if (!canWrite) return view;
+              return `${view} <button class="btn small" data-act="pay" data-id="${r.bill_id}">Add Payment</button>`;
+            }
+          },
         ],
         rows,
         emptyText: 'No bills found.',
@@ -1111,7 +1120,7 @@ async function renderBilling(page) {
       el('div', { class: 'label' }, 'Patient ID'),
       el('input', { class: 'input', id: 'bill-patient', type: 'number', placeholder: 'e.g. 1' }),
       el('div', { class: 'label' }, 'Bill Date'),
-      el('input', { class: 'input', id: 'bill-date', type: 'date', value: new Date().toISOString().slice(0,10) }),
+      el('input', { class: 'input', id: 'bill-date', type: 'date', value: new Date().toISOString().slice(0, 10) }),
       el('div', { class: 'label' }, 'Items (one per line: description | qty | price)'),
       el('textarea', { id: 'bill-items', class: 'input' }, 'Consultation Fee | 1 | 500\nMedicine | 1 | 100'),
       el('div', { style: 'height:12px' }),
@@ -1163,7 +1172,7 @@ async function renderBilling(page) {
             const payment_mode = document.getElementById('pay-mode').value.trim();
             const amount = Number(document.getElementById('pay-amount').value || 0);
             try {
-              await API.post(`/billing/${billId}/payments`, { payment_mode, amount, payment_date: new Date().toISOString().slice(0,19).replace('T',' ') });
+              await API.post(`/billing/${billId}/payments`, { payment_mode, amount, payment_date: new Date().toISOString().slice(0, 19).replace('T', ' ') });
               toast('ok', 'Payment added', 'Payment recorded');
               backdrop.remove();
               loadBills();
@@ -1186,26 +1195,26 @@ async function renderReports(page) {
   page.innerHTML = '';
   const role = state.user.role;
   const isStaffOrAdmin = role === 'admin' || role === 'staff';
-  
+
   const card = el('div', { class: 'card full' }, [
     el('h3', {}, 'Reports'),
     el('div', { class: 'muted' }, 'Appointments per doctor, revenue, and patient history.'),
     el('div', { style: 'height:12px' }),
     el('div', { class: 'row' }, [
-      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'r-from', value: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10) })]),
-      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'To'), el('input', { class: 'input', type: 'date', id: 'r-to', value: new Date().toISOString().slice(0,10) })]),
+      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'From'), el('input', { class: 'input', type: 'date', id: 'r-from', value: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10) })]),
+      el('div', { style: 'min-width:220px' }, [el('div', { class: 'label' }, 'To'), el('input', { class: 'input', type: 'date', id: 'r-to', value: new Date().toISOString().slice(0, 10) })]),
       el('div', { class: 'spacer' }),
       el('button', { class: 'btn', onclick: () => loadReports() }, 'Generate'),
     ]),
     // Export buttons for admin/staff
     isStaffOrAdmin ? el('div', { style: 'margin-top:16px; display:flex; gap:10px; flex-wrap:wrap' }, [
-      el('button', { 
-        class: 'btn small', 
+      el('button', {
+        class: 'btn small',
         onclick: () => downloadCsv('appointments'),
         title: 'Download appointments as CSV'
       }, '📥 Export Appointments CSV'),
-      el('button', { 
-        class: 'btn small', 
+      el('button', {
+        class: 'btn small',
         onclick: () => downloadCsv('billing'),
         title: 'Download billing records as CSV'
       }, '📥 Export Billing CSV'),
@@ -1220,7 +1229,7 @@ async function renderReports(page) {
     const to = document.getElementById('r-to').value;
     const url = `/api.php?route=/reports/${type}/csv&from=${from}&to=${to}`;
     const filename = `clinic_${type}_report_${from}_to_${to}.csv`;
-    
+
     // Use fetch + blob to force proper file download with filename
     fetch(url, { credentials: 'include' })
       .then(response => {
@@ -1405,15 +1414,17 @@ async function renderProfile(page) {
       el('div', { class: 'label' }, 'New Password'),
       el('input', { class: 'input', type: 'password', id: 'new-pw', placeholder: 'Enter new password' }),
       el('div', { style: 'height:12px' }),
-      el('button', { class: 'btn primary', onclick: async () => {
-        const pw = document.getElementById('new-pw').value;
-        if (!pw || pw.length < 6) { toast('bad', 'Error', 'Password must be at least 6 characters'); return; }
-        try {
-          await API.post('/auth/change-password', { new_password: pw });
-          toast('ok', 'Success', 'Password updated');
-          document.getElementById('new-pw').value = '';
-        } catch (e) { toast('bad', 'Error', e.message); }
-      }}, 'Update Password'),
+      el('button', {
+        class: 'btn primary', onclick: async () => {
+          const pw = document.getElementById('new-pw').value;
+          if (!pw || pw.length < 6) { toast('bad', 'Error', 'Password must be at least 6 characters'); return; }
+          try {
+            await API.post('/auth/change-password', { new_password: pw });
+            toast('ok', 'Success', 'Password updated');
+            document.getElementById('new-pw').value = '';
+          } catch (e) { toast('bad', 'Error', e.message); }
+        }
+      }, 'Update Password'),
     ]),
   ]);
   page.appendChild(card);
@@ -1447,7 +1458,7 @@ async function renderChangePassword(page) {
     el('input', { class: 'input', type: 'password', id: 'cp-current' }),
     el('div', { class: 'label' }, 'New Password'),
     el('input', { class: 'input', type: 'password', id: 'cp-new' }),
-     el('div', { class: 'muted', style: 'font-size:12px; margin-top:4px' }, 'Min 8 chars, 1 uppercase, 1 number'),
+    el('div', { class: 'muted', style: 'font-size:12px; margin-top:4px' }, 'Min 8 chars, 1 uppercase, 1 number'),
     el('div', { style: 'height:16px' }),
     el('button', { class: 'btn primary', onclick: doChangePassword }, 'Update Password'),
   ]);
@@ -1501,13 +1512,15 @@ async function renderDoctors(page) {
           { key: 'department_name', label: 'Department' },
           { key: 'consultation_fee', label: 'Fee' },
           { key: 'status', label: 'Status', render: (r) => badgeStatus(r.status) },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
-            if (!canWrite) return '';
-            return `
+          {
+            key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
+              if (!canWrite) return '';
+              return `
               <button class="btn small" data-act="edit" data-id="${r.doctor_id}">Edit</button>
               <button class="btn small danger" data-act="del" data-id="${r.doctor_id}">Delete</button>
             `;
-          }},
+            }
+          },
         ],
         rows,
         emptyText: 'No doctors found.',
@@ -1681,7 +1694,8 @@ async function renderStaff(page) {
           { key: 'login_email', label: 'Email' },
           { key: 'role', label: 'Role' },
           { key: 'status', label: 'Status', render: (r) => badgeStatus(r.status) },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => `
+          {
+            key: 'actions', label: 'Actions', class: 'actions', render: (r) => `
               <button class="btn small" data-act="edit" data-id="${r.staff_id}">Edit</button>
               <button class="btn small danger" data-act="del" data-id="${r.staff_id}">Delete</button>
           `},
@@ -1815,11 +1829,13 @@ async function renderPatients(page) {
           { key: 'gender', label: 'Gender' },
           { key: 'mobile', label: 'Mobile' },
           { key: 'blood_group', label: 'Blood' },
-          { key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
-            const view = `<button class="btn small" data-act="view" data-id="${r.patient_id}">View</button>`;
-            if (!canWrite) return view;
-            return `${view} <button class="btn small" data-act="edit" data-id="${r.patient_id}">Edit</button> <button class="btn small danger" data-act="del" data-id="${r.patient_id}">Delete</button>`;
-          }},
+          {
+            key: 'actions', label: 'Actions', class: 'actions', render: (r) => {
+              const view = `<button class="btn small" data-act="view" data-id="${r.patient_id}">View</button>`;
+              if (!canWrite) return view;
+              return `${view} <button class="btn small" data-act="edit" data-id="${r.patient_id}">Edit</button> <button class="btn small danger" data-act="del" data-id="${r.patient_id}">Delete</button>`;
+            }
+          },
         ],
         rows,
         emptyText: 'No patients found.',
